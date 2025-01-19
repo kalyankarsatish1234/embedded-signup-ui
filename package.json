@@ -1,0 +1,30 @@
+{
+  "name": "tutorial",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "axios": "^1.7.9",
+    "body-parser": "^1.20.3",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jquery": "^3.2.1",
+    "react": "^15.4.2",
+    "react-dom": "^15.4.2",
+    "react-reorder": "^3.0.0-alpha.0",
+    "react-router": "^2.8.1"
+  },
+  "devDependencies": {
+    "react-scripts": "0.9.5"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject"
+  },
+  "description": "Implementation of Facebook, google and Linked In login with ReactJs",
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
