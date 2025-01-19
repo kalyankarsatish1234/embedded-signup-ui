@@ -1,0 +1,150 @@
+package com.agrobeet.web.rest;
+
+import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+
+@RestController
+@RequestMapping("/api")
+public class FacebookOAuthController {
+
+    @Value("${facebook.client-id}")
+    private String clientId;
+
+    @Value("${facebook.client-secret}")
+    private String clientSecret;
+
+    @Value("${facebook.redirect-uri}")
+    private String redirectUri;
+
+    private final WebClient webClient;
+
+    public FacebookOAuthController(WebClient.Builder webClientBuilder) {
+        this.webClient = webClientBuilder.baseUrl("https://graph.facebook.com/v21.0").build();
+    }
+
+    @PostMapping("/generate-token")
+    public ResponseEntity<?> generateToken(@RequestBody TokenRequest tokenRequest) {
+        if (tokenRequest.getCode() == null || tokenRequest.getCode().isEmpty()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body("Authorization code is required");
+        }
+
+        try {
+            String response = webClient.post()
+                .uri(uriBuilder -> uriBuilder
+                    .path("/oauth/access_token")
+                    .queryParam("client_id", clientId)
+                    .queryParam("client_secret", clientSecret)
+                    .queryParam("redirect_uri", redirectUri)
+                    .queryParam("code", tokenRequest.getCode())
+                    .build())
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error exchanging token: " + e.getMessage());
+        }
+    }
+
+    // DTO for the request body
+    public static class TokenRequest {
+        private String code;
+
+        public String getCode() {
+            return code;
+        }
+
+        public void setCode(String code) {
+            this.code = code;
+        }
+    }
+
+
+   /* @PostMapping("/exchange-token")
+    public Mono<ResponseEntity<Map<String, Object>>> exchangeToken(@RequestBody Map<String, String> request) {
+        String code = request.get("code");
+
+        if (code == null || code.isEmpty()) {
+            return Mono.just(ResponseEntity.badRequest().body(Map.of("error", "Authorization code is required")));
+        }
+
+        // Step 1: Exchange the authorization code for an access token
+        return webClient.get()
+            .uri(uriBuilder -> uriBuilder.path("/oauth/access_token")
+                .queryParam("client_id", clientId)
+                .queryParam("client_secret", clientSecret)
+                .queryParam("redirect_uri", redirectUri)
+                .queryParam("code", code)
+                .build())
+            .retrieve()
+            .bodyToMono(Map.class)
+            .flatMap(tokenResponse -> {
+                String accessToken = (String) tokenResponse.get("access_token");
+
+                // Step 2: Retrieve user info using the access token
+                return webClient.get()
+                    .uri(uriBuilder -> uriBuilder.path("/me")
+                        .queryParam("access_token", accessToken)
+                        .build())
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .map(userInfo -> ResponseEntity.ok(Map.of(
+                        "message", "Token exchanged successfully",
+                        "accessToken", accessToken,
+                        "userInfo", userInfo
+                    )));
+            })
+            .onErrorResume(e -> {
+                e.printStackTrace();
+                return Mono.just(ResponseEntity.status(500).body(Map.of(
+                    "error", "Failed to exchange token",
+                    "details", e.getMessage()
+                )));
+            });
+    }*/
+
+    @PostMapping("/exchange-token")
+    public Mono<ResponseEntity<Map<String, Object>>> exchangeToken(@RequestBody Map<String, String> request) {
+        String code = request.get("code");
+
+        if (code == null || code.isEmpty()) {
+            return Mono.just(ResponseEntity.badRequest().body(Map.of("error", "Authorization code is required")));
+        }
+
+        // Step 1: Exchange the authorization code for an access token
+        return webClient.get()
+            .uri(uriBuilder -> uriBuilder.path("/oauth/access_token")
+                .queryParam("client_id", clientId)
+                .queryParam("client_secret", clientSecret)
+                .queryParam("redirect_uri", redirectUri)
+                .queryParam("code", code)
+                .build())
+            .retrieve()
+            .bodyToMono(Map.class) // Assuming Facebook returns a JSON object
+            .map(tokenResponse -> {
+                // Return the response directly as received from Facebook
+                return ResponseEntity.ok(Map.of(
+                    "access_token", tokenResponse.get("access_token"),
+                    "token_type", tokenResponse.get("token_type"),
+                    "expires_in", tokenResponse.get("expires_in")
+                ));
+            })
+            .onErrorResume(e -> {
+                e.printStackTrace();
+                return Mono.just(ResponseEntity.status(500).body(Map.of(
+                    "error", "Failed to exchange token",
+                    "details", e.getMessage()
+                )));
+            });
+    }
+
+}
